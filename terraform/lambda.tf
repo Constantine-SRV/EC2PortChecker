@@ -48,13 +48,6 @@ resource "aws_lambda_function" "ec2_ip_access_checker" {
   filename         = data.archive_file.lambda_zip.output_path
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
 
-  environment {
-    variables = {
-      EMAIL  = "5625@pam4.com"
-      REGION = "us-east-1"
-    }
-  }
-
   depends_on = [aws_iam_role_policy_attachment.lambda_policy_attach]
 }
 
