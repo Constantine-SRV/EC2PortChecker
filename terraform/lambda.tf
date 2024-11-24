@@ -31,7 +31,7 @@ resource "aws_iam_role_policy_attachment" "lambda_policy_attach" {
 # Archive the Lambda function code from index.py
 data "archive_file" "lambda_zip" {
   type        = "zip"
-  source_file = "${path.module}/../pyton/index.py" # Ensure the Lambda code is located in pyton/index.py
+  source_file = "${path.module}/../pyton/index.py" # the Lambda code is located in pyton/index.py
   output_path = "${path.module}/function.zip"
 }
 
