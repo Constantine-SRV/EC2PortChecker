@@ -1,0 +1,69 @@
+name: Terraform Action Lambda
+
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        type: choice
+        description: terraform command
+        default: plan
+        options:
+          - plan
+          - apply
+          - destroy
+
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.TF_VAR_ACCESS_KEY }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.TF_VAR_SECRET_KEY }}
+  command: ${{ github.event.inputs.command }}
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: Terraform Setup
+        uses: hashicorp/setup-terraform@v3.1.2
+
+      - name: 'List files for ./'
+        run: ls -la ./
+
+      - name: Retrieve SSH Key from S3
+        run: |
+          echo "Retrieving SSH Key from S3 bucket..."
+          aws s3 cp s3://constantine-z/pair-key.pem pair-key.pem --region eu-north-1
+          echo "SSH Key retrieved successfully."
+        shell: bash
+        working-directory: ./terraform
+
+      - name: 'List files for ./terraform'
+        run: ls -la ./
+        working-directory: ./terraform
+
+      - name: Terraform Init
+        run: |
+          echo "INFO: started by $GITHUB_ACTOR"
+          echo "INFO: start $(date -u)"
+          terraform init
+        working-directory: ./terraform
+
+      - name: Terraform Run
+        id: terraform
+        run: |
+          echo "INFO: started by ${GITHUB_ACTOR}"
+          echo "INFO: start $(date -u)"
+          
+          if [ "$command" == "plan" ]; then
+            echo "RUN: terraform plan"
+            terraform plan
+          elif [ "$command" == "destroy" ]; then
+            echo "RUN: terraform destroy"
+            terraform destroy -auto-approve
+          elif [ "$command" == "apply" ]; then
+            echo "RUN: terraform apply -input=false"
+            terraform apply -input=false -auto-approve
+          fi
+        working-directory: ./terraform
+
