@@ -1,8 +1,8 @@
 ﻿# Variables
 $FUNCTION_NAME = "EC2IPAccessChecker"
 $ROLE_NAME = "LambdaEC2AccessRole"
-$POLICY_ARN = "arn:aws:iam::637423446150:policy/LambdaEC2ReadOnly"
-$REGION = "eu-north-1"
+$POLICY_ARN = "arn:aws:iam::761379944511:policy/LambdaEC2ReadOnly"
+$REGION = "us-east-1"
 
 # Function to delete all non-default policy versions
 function Delete-NonDefaultPolicyVersions {
@@ -60,4 +60,14 @@ if ($role_exists) {
     Write-Output "IAM role $ROLE_NAME does not exist. Skipping role deletion."
 }
 
+
+
+
+aws events remove-targets --rule "DailyEC2IPAccessCheckerTrigger" --ids "EC2IPAccessCheckerLambda" --region $REGION
+
+
+aws lambda remove-permission --function-name "EC2IPAccessChecker" --statement-id "AllowExecutionFromEventBridge" --region $REGION
+
+
+aws events delete-rule --name "DailyEC2IPAccessCheckerTrigger" --region $REGION
 Write-Output "Cleanup completed successfully."

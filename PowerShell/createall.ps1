@@ -6,7 +6,6 @@ $region = "us-east-1"                   # AWS region for SES and Lambda
 $functionName = "EC2IPAccessChecker"    # Lambda function name
 $roleName = "LambdaEC2AccessRole"       # IAM role name
 $policyName = "LambdaEC2ReadOnly"       # IAM policy name
-
 # Retrieve AWS Account ID
 $ACCOUNT_ID = aws sts get-caller-identity --query Account --output text
 Write-Output "Account ID: $ACCOUNT_ID"
@@ -44,18 +43,7 @@ if (-not $verificationStatus) {
     # Prompt the user to press Enter after verifying the email
     Read-Host "After verifying the email, press Enter to continue..."
     
-    # Optionally, implement a loop to wait until the email is verified
-    # Uncomment the following block to enable automatic checking
 
-    # do {
-    #     Write-Output "Checking email verification status..."
-    #     $verificationStatus = Is-EmailVerified -Email $email -Region $region
-    #     if (-not $verificationStatus) {
-    #         Write-Output "Email not yet verified. Waiting for 30 seconds before rechecking..."
-    #         Start-Sleep -Seconds 30
-    #     }
-    # } while (-not $verificationStatus)
-    # Write-Output "Email address $email has been verified."
 } else {
     Write-Output "Email address $email is already verified."
 }
@@ -103,6 +91,7 @@ Start-Sleep -Seconds 10
 Write-Output "Packaging Lambda function code into function.zip"
 Compress-Archive -Path index.py -DestinationPath function.zip -Force
 
+
 # Create or Update Lambda Function
 Write-Output "Checking if Lambda function exists: $functionName"
 aws lambda get-function --function-name $functionName --region $region >$null 2>&1
@@ -127,7 +116,7 @@ if ($LASTEXITCODE -eq 0) {
         --role $ROLE_ARN `
         --handler index.lambda_handler `
         --zip-file fileb://function.zip `
-        --timeout 30 `
+        --timeout 600 `
         --memory-size 128 `
         --description "Lambda function to retrieve IP addresses of all EC2 instances across all regions in the account and send SES email report" `
         --region $region
@@ -139,11 +128,46 @@ $invoke_response = aws lambda invoke `
     --function-name $functionName `
     --payload "{}" `
     response.json `
-    --region $region
+    --region $region `
+    --cli-read-timeout 600 `
+    --cli-connect-timeout 60
 
 # Check if invocation was successful by searching for "StatusCode": 200 in the response
+Write-Output $invoke_response
 
 
-Get-Content response.json | ConvertFrom-Json | Select-Object -ExpandProperty body | ConvertFrom-Json | Format-List
-# Optional: Clean up the function.zip file
-#Remove-Item -Path function.zip -Force
+aws events put-rule --name "DailyEC2IPAccessCheckerTrigger" --description "Trigger EC2IPAccessChecker Lambda function every Monday at 18:00 UTC" --schedule-expression "cron(0 18 ? * MON *)" --region $region
+$Source_ARN = "arn:aws:events:us-east-1:" + $ACCOUNT_ID+":rule/DailyEC2IPAccessCheckerTrigger"
+Write-Output $Source_ARN
+aws lambda add-permission --function-name "EC2IPAccessChecker" --statement-id "AllowExecutionFromEventBridge" --action "lambda:InvokeFunction" --principal "events.amazonaws.com" --source-arn $Source_ARN --region $region
+
+
+$targets = @(
+    @{
+        Id  = "EC2IPAccessCheckerLambda"
+        Arn = "arn:aws:lambda:us-east-1:" + $ACCOUNT_ID + ":function:EC2IPAccessChecker"
+    }
+)
+
+
+$targetsJson = $targets | ConvertTo-Json -Compress
+
+if ($targetsJson.StartsWith("{") -and $targetsJson.EndsWith("}")) {
+    $targetsJson = "[$targetsJson]"
+  
+} 
+
+
+if ($PSVersionTable.PSVersion.Major -ge 6) {
+   
+    $targetsJson | Set-Content -Path "targets.json" -Encoding utf8NoBOM
+} else {
+  
+    $utf8NoBOM = New-Object System.Text.UTF8Encoding($False)
+    [System.IO.File]::WriteAllText("targets.json", $targetsJson, $utf8NoBOM)
+}
+
+
+Get-Content -Path "targets.json"
+
+aws events put-targets --rule "DailyEC2IPAccessCheckerTrigger" --targets file://targets.json --region $region
