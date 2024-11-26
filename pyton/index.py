@@ -22,11 +22,11 @@ def lambda_handler(event, context):
                 instance_id = instance.id
                 name = get_instance_name(instance)
                 public_ip = instance.public_ip_address if instance.public_ip_address else 'N/A'
-                port_open = 'No'
+                port_open = 'Closed'
                 
                 if public_ip != 'N/A':
                     if is_port_open(public_ip):
-                        port_open = 'Yes'
+                        port_open = 'Open'
                 
                 results.append({
                     'Region': region,
@@ -170,12 +170,12 @@ def format_results_as_html(results):
             <th>Instance ID</th>
             <th>Name</th>
             <th>Public IP</th>
-            <th>Port 22 Open</th>
+            <th>Port 22 Status</th>
         </tr>
 """
     # Add table rows with conditional styling
     for item in results:
-        if item['Port 22 Open'] == 'Yes':
+        if item['Port 22 Open'] == 'Open':
             row_class = 'open-port'
         else:
             row_class = ''
