@@ -184,10 +184,6 @@ def format_results_as_html(results, summary):
             background-color: #f2f2f2;
         }}
         .open-port {{
-            background-color: #d4edda; /* Light green background */
-            color: #155724; /* Dark green text */
-        }}
-        .closed-port {{
             background-color: #f8d7da; /* Light red background */
             color: #721c24; /* Dark red text */
         }}
@@ -206,13 +202,12 @@ def format_results_as_html(results, summary):
             <th>Instance ID</th>
         </tr>
 """
-
     # Add table rows with conditional styling
     for item in results:
         if item['Port 22 Open'] == 'Open':
             row_class = 'open-port'
         else:
-            row_class = 'closed-port'
+            row_class = ''
         
         html += f"""
         <tr class="{row_class}">
@@ -224,7 +219,6 @@ def format_results_as_html(results, summary):
             <td>{item['Instance ID']}</td>
         </tr>
 """
-
     # Close the HTML structure
     html += """
     </table>
