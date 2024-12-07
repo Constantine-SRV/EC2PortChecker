@@ -1,7 +1,13 @@
 import json
 import boto3
 import socket
+import csv
+import io
+import base64
 from botocore.exceptions import NoCredentialsError, ClientError
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.application import MIMEApplication
 
 sender_email = '5625@pam4.com'
 recipient_email = '5625@pam4.com'
@@ -52,21 +58,26 @@ def lambda_handler(event, context):
 
         # Format the results into an HTML table with the summary and account suffix
         html_body = format_results_as_html(results, summary, account_suffix)
-        
+
+        # Generate CSV content
+        csv_content = generate_csv(results)
+
         # Create the email subject with the last 4 digits of the Account ID
         email_subject = f'Daily EC2 Port 22 Status Report - Account {account_suffix}'
-        
-        # Send the email via SES
-        send_email(
-            sender=sender_email,               
-            recipient=recipient_email,            
+
+        # Send the email via SES with CSV attachment
+        send_email_with_attachment(
+            sender=sender_email,
+            recipient=recipient_email,
             subject=email_subject,
-            body_html=html_body
+            body_html=html_body,
+            attachment_filename='EC2_Port22_Status_Report.csv',
+            attachment_content=csv_content
         )
         
         return {
             'statusCode': 200,
-            'body': json.dumps('Email sent successfully!')
+            'body': json.dumps('Email with attachment sent successfully!')
         }
 
     except NoCredentialsError:
@@ -136,27 +147,51 @@ def is_port_open(ip, port=22, timeout=3):
     except (socket.timeout, socket.error):
         return False
 
-def send_email(sender, recipient, subject, body_html):
-    """Sends an email via SES."""
+def generate_csv(results):
+    """Generates CSV content from the results."""
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=['Region', 'Name', 'Owner', 'Public IP', 'Port 22 Open', 'Instance ID'])
+    writer.writeheader()
+    for row in results:
+        writer.writerow(row)
+    return output.getvalue()
+
+def send_email_with_attachment(sender, recipient, subject, body_html, attachment_filename, attachment_content):
+    """Sends an email via SES with an attachment."""
+    # Create a multipart/mixed parent container.
+    msg = MIMEMultipart('mixed')
+    msg['Subject'] = subject
+    msg['From'] = sender
+    msg['To'] = recipient
+
+    # Create a multipart/alternative child container.
+    msg_body = MIMEMultipart('alternative')
+
+    # Encode the HTML body.
+    html_part = MIMEText(body_html, 'html')
+
+    # Add the HTML part to the child container.
+    msg_body.attach(html_part)
+
+    # Attach the multipart/alternative child container to the multipart/mixed parent container.
+    msg.attach(msg_body)
+
+    # Encode the CSV attachment
+    attachment_part = MIMEApplication(attachment_content, _subtype='csv')
+    attachment_part.add_header('Content-Disposition', 'attachment', filename=attachment_filename)
+
+    # Attach the CSV file to the email.
+    msg.attach(attachment_part)
+
+    # Send the email via SES
     try:
-        response = ses_client.send_email(
+        response = ses_client.send_raw_email(
             Source=sender,
-            Destination={
-                'ToAddresses': [
-                    recipient,
-                ],
-            },
-            Message={
-                'Subject': {
-                    'Data': subject,
-                    'Charset': 'UTF-8'
-                },
-                'Body': {
-                    'Html': {
-                        'Data': body_html,
-                        'Charset': 'UTF-8'
-                    }
-                }
+            Destinations=[
+                recipient,
+            ],
+            RawMessage={
+                'Data': msg.as_string(),
             }
         )
     except ClientError as e:
