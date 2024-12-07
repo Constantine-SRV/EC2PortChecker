@@ -50,8 +50,8 @@ def lambda_handler(event, context):
         # Create the summary string
         summary = f"Number of Instances validated: {total_instances} <br> Number of instances with Status of Port 22 Open: {open_port_instances} <br><br>"
 
-        # Format the results into an HTML table with the summary
-        html_body = format_results_as_html(results, summary)
+        # Format the results into an HTML table with the summary and account suffix
+        html_body = format_results_as_html(results, summary, account_suffix)
         
         # Create the email subject with the last 4 digits of the Account ID
         email_subject = f'Daily EC2 Port 22 Status Report - Account {account_suffix}'
@@ -165,8 +165,8 @@ def send_email(sender, recipient, subject, body_html):
     else:
         print(f"Email sent! Message ID: {response['MessageId']}")
 
-def format_results_as_html(results, summary):
-    """Formats the results into an HTML table with a summary."""
+def format_results_as_html(results, summary, account_suffix):
+    """Formats the results into an HTML table with a summary and account suffix."""
     # Start the HTML structure with styles
     html = f"""<html>
 <head>
@@ -190,7 +190,7 @@ def format_results_as_html(results, summary):
     </style>
 </head>
 <body>
-    <h2>Daily EC2 Port 22 Status Report</h2>
+    <h3>Daily EC2 Port 22 Status Report - Account {account_suffix}</h3>
     {summary}
     <table>
         <tr>
