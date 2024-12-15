@@ -55,7 +55,7 @@ def lambda_handler(event, context):
         
         # Create the summary string
         summary = f"Number of Instances validated: {total_instances} <br> Number of instances with Status of Port 22 Open: {open_port_instances} <br><br>"
-
+        print(summary)
         # Format the results into an HTML table with the summary and account suffix
         html_body = format_results_as_html(results, summary, account_suffix)
 
@@ -74,7 +74,7 @@ def lambda_handler(event, context):
             attachment_filename='EC2_Port22_Status_Report.csv',
             attachment_content=csv_content
         )
-        
+        print("Email sent successfully.")
         return {
             'statusCode': 200,
             'body': json.dumps('Email with attachment sent successfully!')
