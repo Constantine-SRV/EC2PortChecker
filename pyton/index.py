@@ -81,7 +81,7 @@ def lambda_handler(event, context):
         csv_content = generate_csv(results) if is_result_table_as_attached else None
 
         # Create the email subject with the last 4 digits of the Account ID
-        email_subject = f'Daily EC2 Port 22 Status Report - Account {account_suffix}'
+        email_subject = f'EC2 Port 22 Status Report - Account {account_suffix}'
 
         # Send the email via SES with optional CSV attachment
         send_email_with_attachment(
@@ -267,7 +267,7 @@ def format_results_as_html(results, summary, account_suffix):
     </style>
 </head>
 <body>
-    <h3>Daily EC2 Port 22 Status Report - Account {account_suffix}</h3>
+    <h3>EC2 Port 22 Status Report - Account {account_suffix}</h3>
     {summary}
     <table>
         <tr>
@@ -314,7 +314,7 @@ def generate_summary_html(summary, account_suffix):
     </style>
 </head>
 <body>
-    <h3>Daily EC2 Port 22 Status Report - Account {account_suffix}</h3>
+    <h3>EC2 Port 22 Status Report - Account {account_suffix}</h3>
     {summary}
 </body>
 </html>
