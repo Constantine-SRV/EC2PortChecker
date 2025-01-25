@@ -54,8 +54,8 @@ resource "aws_lambda_function" "ec2_ip_access_checker" {
 # Setup EventBridge for daily Lambda function trigger
 resource "aws_cloudwatch_event_rule" "daily_lambda_trigger" {
   name                = "DailyEC2IPAccessCheckerTrigger"
-  description         = "Trigger EC2IPAccessChecker Lambda function daily at 20:00 UTC (22:00 Cyprus time)"
-  schedule_expression = "cron(0 20 * * ? *)" # Daily at 20:00 UTC (22:00 Cyprus time)
+  description         = "Trigger EC2IPAccessChecker Lambda function Mon at 18:00 UTC"
+  schedule_expression = "cron(0 18 ? * MON *)" # mon at 18:00 UTC (22:00 Cyprus time)
 }
 
 # Grant EventBridge permission to invoke the Lambda function
