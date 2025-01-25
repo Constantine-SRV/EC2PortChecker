@@ -49,11 +49,11 @@ def lambda_handler(event, context):
                 name = get_instance_name(instance)
                 owner = get_instance_owner(instance)
                 public_ip = instance.public_ip_address if instance.public_ip_address else 'N/A'
-                port_open = 'Closed'
+                port_status = 'Closed'
                 
                 if public_ip != 'N/A':
                     if is_port_open(public_ip):
-                        port_open = 'Open'
+                        port_status = 'Open'
                         open_port_instances += 1
                 
                 results.append({
@@ -61,14 +61,14 @@ def lambda_handler(event, context):
                     'Name': name,
                     'Owner': owner,
                     'Public IP': public_ip,
-                    'Port 22 Open': port_open,
+                    'Port 22 Status': port_status,
                     'Instance ID': instance_id
                 })
 
         # Create the summary string
         summary = (
             f"Number of Instances validated: {total_instances} <br> "
-            f"Number of instances with Status of Port 22 Open: {open_port_instances} <br><br>"
+            f"Number of instances with Port 22 Open: {open_port_instances} <br><br>"
         )
         
         # Log the summary
@@ -81,7 +81,7 @@ def lambda_handler(event, context):
         csv_content = generate_csv(results) if is_result_table_as_attached else None
 
         # Create the email subject with the last 4 digits of the Account ID
-        email_subject = f'EC2 Port 22 Status Report - Account {account_suffix}'
+        email_subject = f'Daily EC2 Port 22 Status Report - Account {account_suffix}'
 
         # Send the email via SES with optional CSV attachment
         send_email_with_attachment(
@@ -187,7 +187,8 @@ def generate_csv(results):
     Generates CSV content from the results.
     """
     output = io.StringIO()
-    writer = csv.DictWriter(output, fieldnames=['Region', 'Name', 'Owner', 'Public IP', 'Port 22 Open', 'Instance ID'])
+    fieldnames = ['Region', 'Name', 'Owner', 'Public IP', 'Port 22 Status', 'Instance ID']
+    writer = csv.DictWriter(output, fieldnames=fieldnames)
     writer.writeheader()
     for row in results:
         writer.writerow(row)
@@ -267,7 +268,7 @@ def format_results_as_html(results, summary, account_suffix):
     </style>
 </head>
 <body>
-    <h3>EC2 Port 22 Status Report - Account {account_suffix}</h3>
+    <h3>Daily EC2 Port 22 Status Report - Account {account_suffix}</h3>
     {summary}
     <table>
         <tr>
@@ -281,14 +282,14 @@ def format_results_as_html(results, summary, account_suffix):
 """
     # Add table rows with conditional styling
     for item in results:
-        row_class = 'open-port' if item['Port 22 Open'] == 'Open' else 'closed-port'
+        row_class = 'open-port' if item['Port 22 Status'] == 'Open' else 'closed-port'
         html += f"""
         <tr class="{row_class}">
             <td>{item['Region']}</td>
             <td>{item['Name']}</td>
             <td>{item['Owner']}</td>
             <td>{item['Public IP']}</td>
-            <td>{item['Port 22 Open']}</td>
+            <td>{item['Port 22 Status']}</td>
             <td>{item['Instance ID']}</td>
         </tr>
 """
@@ -314,7 +315,7 @@ def generate_summary_html(summary, account_suffix):
     </style>
 </head>
 <body>
-    <h3>EC2 Port 22 Status Report - Account {account_suffix}</h3>
+    <h3>Daily EC2 Port 22 Status Report - Account {account_suffix}</h3>
     {summary}
 </body>
 </html>
